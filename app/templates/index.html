@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Python Async CRUD API</title>
+  <meta name="color-scheme" content="light dark" />
+  <style>
+    :root { --bg:#f7f8fb; --fg:#0f172a; --muted:#475569; --card:#fff; --border:#e2e8f0; --primary:#0ea5e9; --primary-600:#0284c7; --ok:#16a34a; --bad:#dc2626; --shadow:0 12px 40px rgba(2,6,23,.10);}
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#0b1220; --fg:#e5e7eb; --muted:#94a3b8; --card:#0f1629; --border:#1f2937; --shadow:none; }
+    }
+    * { box-sizing: border-box }
+    body { margin:0; font:16px/1.55 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji"; background:var(--bg); color:var(--fg); }
+    .wrap { max-width: 920px; margin: 64px auto; padding: 0 20px; }
+    .hero {
+      background: radial-gradient(1200px 400px at 20% -10%, rgba(14,165,233,.18), transparent),
+                  radial-gradient(900px 300px at 110% -20%, rgba(99,102,241,.18), transparent);
+      border-radius: 20px; padding: 36px; box-shadow: var(--shadow); border:1px solid var(--border);
+    }
+    .title { display:flex; align-items:center; gap:.6rem; margin:0 0 .35rem; font-weight:700; font-size:1.9rem; }
+    .badge { display:inline-flex; align-items:center; gap:.4rem; font-weight:600; background:rgba(22,163,74,.12); color:var(--ok); border:1px solid rgba(22,163,74,.3); padding:.35rem .6rem; border-radius:10px; }
+    .badge.bad { background:rgba(220,38,38,.12); color:var(--bad); border-color:rgba(220,38,38,.35); }
+    .muted { color: var(--muted); margin:0 0 1.2rem; }
+    .row { display:flex; flex-wrap:wrap; gap:12px; margin: 16px 0 8px; }
+    .btn {
+      display:inline-block; padding:.7rem 1rem; border-radius:12px; border:1px solid var(--border);
+      text-decoration:none; font-weight:600; color:var(--fg); background:var(--card); transition:transform .06s ease, border-color .15s ease, background .15s ease;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn.primary { background: var(--primary); color: white; border-color: var(--primary); }
+    .btn.primary:hover { background: var(--primary-600); border-color: var(--primary-600); }
+    .grid { display:grid; grid-template-columns: 1.1fr .9fr; gap:16px; margin-top:18px; }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; box-shadow: var(--shadow); }
+    h3 { margin: 0 0 .6rem; font-size:1.05rem; }
+    pre { margin:0; padding:14px; border-radius:12px; background:#0b1220; color:#e5e7eb; overflow:auto; border:1px solid #1f2937; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: .92rem; }
+    .flex { display:flex; align-items:center; gap:8px; justify-content:space-between; }
+    .copy { cursor:pointer; user-select:none; }
+    .field { display:flex; gap:8px; }
+    .field input { flex:1; padding:.65rem .7rem; border-radius:10px; border:1px solid var(--border); background:var(--card); color:var(--fg); }
+    .small { font-size:.9rem; color:var(--muted); }
+    .out { white-space: pre-wrap; background: #0b1220; color:#e5e7eb; padding:12px; border-radius:12px; border:1px solid #1f2937; max-height:240px; overflow:auto; }
+    .table-wrap { overflow:auto; border:1px solid var(--border); border-radius:12px; }
+    .tbl { width:100%; border-collapse: collapse; background:var(--card); }
+    .tbl th, .tbl td { padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; }
+    .tbl tbody tr:hover { background: rgba(14,165,233,.06); }
+    .btn.sm { padding:.45rem .65rem; border-radius:10px; font-size:.9rem; }
+    .btn.ghost { background:transparent; }
+    .btn.danger { border-color: rgba(220,38,38,.4); color:#dc2626; }
+    .btn.danger:hover { background: rgba(220,38,38,.08); }
+    .actions { display:flex; gap:8px; justify-content:flex-end; }
+    .input-sm { width:100%; padding:.45rem .55rem; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--fg); }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="flex" style="gap:12px">
+        <h1 class="title">✅ Python Async CRUD API</h1>
+        <span id="health" class="badge">Checking…</span>
+      </div>
+      <p class="muted">FastAPI + SQLAlchemy (async). Use the links below to explore.</p>
+
+      <div class="row">
+        <a class="btn primary" href="/docs">Open Swagger UI</a>
+        <a class="btn" href="/redoc">Open ReDoc</a>
+        <a class="btn" href="/health">Health</a>
+        <a class="btn" href="/items/">Items JSON</a>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="flex">
+            <h3>Quick test (curl)</h3>
+            <button id="copy" class="btn copy">Copy</button>
+          </div>
+          <pre><code id="curl">curl -X POST http://127.0.0.1:8000/items/ \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Hello","description":"from landing page"}'</code></pre>
+          <p class="small">Paste into your terminal. Returns the created JSON item.</p>
+        </div>
+
+        <div class="card">
+          <h3>Create an item (no curl)</h3>
+          <form id="form">
+            <div class="field" style="margin-bottom:8px">
+              <input id="name" placeholder="name" required />
+              <input id="desc" placeholder="description" required />
+              <button class="btn primary" type="submit">Create</button>
+            </div>
+          </form>
+          <div id="out" class="out" hidden></div>
+        </div>
+      </div>
+    </section>
+  </main>
+<div class="card" style="grid-column: 1 / -1;">
+  <div class="flex">
+    <h3>Items (latest first)</h3>
+    <div>
+      <button id="refresh" class="btn">Refresh</button>
+    </div>
+  </div>
+
+  <div class="small" style="margin:.35rem 0 10px">Showing up to 50 items.</div>
+
+  <div class="table-wrap">
+    <table class="tbl" id="items-table">
+      <thead>
+        <tr>
+          <th style="width:30%">Name</th>
+          <th style="width:38%">Description</th>
+          <th style="width:18%">Created</th>
+          <th style="width:14%">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="4" class="muted">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+  <script>
+  // --- Health badge ---
+  (async () => {
+    const el = document.getElementById('health');
+    try {
+      const r = await fetch('/health', { cache: 'no-store' });
+      const j = await r.json();
+      if (j.ok) {
+        el.textContent = 'Healthy';
+        el.classList.remove('bad');
+      } else {
+        el.textContent = 'Unhealthy';
+        el.classList.add('bad');
+      }
+    } catch {
+      el.textContent = 'Unreachable';
+      el.classList.add('bad');
+    }
+  })();
+
+  // --- Copy curl snippet ---
+  document.getElementById('copy').addEventListener('click', async () => {
+    const txt = document.getElementById('curl').innerText;
+    try {
+      await navigator.clipboard.writeText(txt);
+      const btn = document.getElementById('copy');
+      const old = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => (btn.textContent = old), 1200);
+    } catch {}
+  });
+
+  // --- Helpers ---
+  function escapeHtml(s){ return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function fmtTime(iso){
+    try { return new Date(iso).toLocaleString(); } catch { return iso; }
+  }
+
+  // --- Items state ---
+  let itemsState = [];
+  let editingId = null;
+
+  async function loadItems() {
+    const tbody = document.querySelector('#items-table tbody');
+    try {
+      const r = await fetch('/items/?limit=50', { cache: 'no-store' });
+      const items = await r.json();
+      if (!Array.isArray(items)) throw new Error('Unexpected response');
+
+      // newest first (API already sorts desc; ensure on client)
+      itemsState = items.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+      renderItems();
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="4" class="muted">Failed to load items: ${String(err)}</td></tr>`;
+    }
+  }
+
+  function renderItems() {
+    const tbody = document.querySelector('#items-table tbody');
+    if (!itemsState.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="muted">No items yet.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = itemsState.map(it => {
+      const isEditing = editingId === it.id;
+      const nameCell = isEditing
+        ? `<input class="input-sm" id="edit-name-${it.id}" value="${escapeHtml(it.name)}" />`
+        : `<strong>${escapeHtml(it.name)}</strong>`;
+      const descCell = isEditing
+        ? `<input class="input-sm" id="edit-desc-${it.id}" value="${escapeHtml(it.description)}" />`
+        : `${escapeHtml(it.description)}`;
+
+      const actions = isEditing
+        ? `
+          <div class="actions">
+            <button class="btn sm primary" onclick="saveEdit('${it.id}')">Save</button>
+            <button class="btn sm ghost" onclick="cancelEdit()">Cancel</button>
+          </div>`
+        : `
+          <div class="actions">
+            <button class="btn sm" onclick="startEdit('${it.id}')">Edit</button>
+            <button class="btn sm danger" onclick="deleteItem('${it.id}')">Delete</button>
+          </div>`;
+
+      return `
+        <tr id="row-${it.id}">
+          <td>${nameCell}</td>
+          <td>${descCell}</td>
+          <td class="small">${fmtTime(it.created_at)}</td>
+          <td>${actions}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  // --- Edit flow (exposed on window for inline handlers) ---
+  window.startEdit = function(id) {
+    editingId = id;
+    renderItems();
+    const inp = document.getElementById(`edit-name-${id}`);
+    if (inp) inp.focus();
+  };
+
+  window.cancelEdit = function() {
+    editingId = null;
+    renderItems();
+  };
+
+  window.saveEdit = async function(id) {
+    const nameEl = document.getElementById(`edit-name-${id}`);
+    const descEl = document.getElementById(`edit-desc-${id}`);
+    const name = nameEl?.value.trim();
+    const description = descEl?.value.trim();
+
+    if (!name && !description) return cancelEdit();
+
+    // disable buttons during save
+    const row = document.getElementById(`row-${id}`);
+    row.querySelectorAll('button').forEach(b => b.disabled = true);
+
+    try {
+      const res = await fetch(`/items/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const updated = await res.json();
+
+      // update local state & re-render
+      itemsState = itemsState.map(it => it.id === id ? updated : it);
+      editingId = null;
+      renderItems();
+    } catch (e) {
+      alert('Failed to save changes: ' + e);
+      row.querySelectorAll('button').forEach(b => b.disabled = false);
+    }
+  };
+
+  // --- Delete flow ---
+  window.deleteItem = async function(id) {
+    const it = itemsState.find(x => x.id === id);
+    const ok = confirm(`Delete "${it?.name ?? 'item'}"? This cannot be undone.`);
+    if (!ok) return;
+
+    // optimistic remove + rollback on failure
+    const backup = itemsState.slice();
+    itemsState = itemsState.filter(x => x.id !== id);
+    renderItems();
+
+    try {
+      const res = await fetch(`/items/${id}`, { method: 'DELETE' });
+      if (res.status !== 204) throw new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      alert('Delete failed: ' + e);
+      itemsState = backup;
+      renderItems();
+    }
+  };
+
+  // --- Create form ---
+  document.getElementById('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nameEl = document.getElementById('name');
+    const descEl = document.getElementById('desc');
+    const name = nameEl.value.trim();
+    const description = descEl.value.trim();
+    const out = document.getElementById('out');
+    out.hidden = false;
+    out.textContent = 'Submitting…';
+    try {
+      const r = await fetch('/items/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description })
+      });
+      const data = await r.json();
+      out.textContent = JSON.stringify(data, null, 2);
+      // clear inputs and refresh list
+      nameEl.value = '';
+      descEl.value = '';
+      setTimeout(loadItems, 100);
+    } catch (err) {
+      out.textContent = String(err);
+    }
+  });
+
+  // --- Refresh button + initial load ---
+  document.getElementById('refresh').addEventListener('click', loadItems);
+  loadItems();
+  </script>
+</body>
+</html>

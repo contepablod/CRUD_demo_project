@@ -1,0 +1,24 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: crud_app
+    # In prod we usually DON'T expose the DB port publicly.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/crud_app
+      ENV: production
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    # No bind-mounts, no --reload; uses the optimized multi-stage Dockerfile
+
+volumes:
+  pgdata:

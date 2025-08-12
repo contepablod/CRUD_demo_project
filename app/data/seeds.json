@@ -1,0 +1,5 @@
+[
+  { "name": "Welcome item", "description": "Created from seeds.json" },
+  { "name": "Second item",  "description": "Loaded via make seedfile" },
+  { "name": "FastAPI FTW",  "description": "JSON-powered seeding" }
+]

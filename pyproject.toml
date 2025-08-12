@@ -1,0 +1,32 @@
+[project]
+name = "crud-python"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.112.0",
+  "uvicorn[standard]>=0.30.0",
+  "SQLAlchemy[asyncio]>=2.0.32",
+  "asyncpg>=0.29.0",
+  "pydantic>=2.8.2",
+  "pydantic-settings>=2.4.0",
+  "python-dotenv>=1.0.1",
+]
+
+[tool.uvicorn]
+factory = false
+host = "0.0.0.0"
+port = 8000
+reload = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = ["migrations"]
+
+[tool.ruff.lint]
+select = ["E","F","W","I","UP","B","SIM"]
+ignore = ["E203"]  # if you later adopt Black-style slicing
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
