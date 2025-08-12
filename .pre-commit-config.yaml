@@ -13,14 +13,14 @@ repos:
 
   # --- Modernize Python syntax to 3.12 ---
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.17.0
+    rev: v3.20.0
     hooks:
       - id: pyupgrade
         args: [--py312-plus]
 
   # --- Ruff: linter + formatter (fast) ---
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.7
+    rev: v0.12.8
     hooks:
       - id: ruff
         args: [--fix]        # autofix lint where possible
@@ -29,7 +29,7 @@ repos:
 
   # --- Optional: type checks on push (slower) ---
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.0
+    rev: v1.17.1
     hooks:
       - id: mypy
         files: ^app/
@@ -49,7 +49,25 @@ repos:
         stages: [pre-push]
 
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v3.26.0
+    rev: v4.8.3
     hooks:
       - id: commitizen
         stages: [commit-msg]
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args:
+          - --baseline
+          - .secrets.baseline
+        exclude: >
+          (?x)(
+            ^\.venv/|
+            ^migrations/|
+            ^node_modules/|
+            \.min\.js$|
+            \.lock$|
+            \.pem$|
+            \.crt$
+          )
