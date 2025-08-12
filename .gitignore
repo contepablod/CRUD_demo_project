@@ -98,3 +98,13 @@ yarn-error.log*
 # Compiled Templates (Jinja2 cache)
 # ----------------------
 __jinja2_cache__/
+__pycache__/
+test.db
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.cache/
+test.db
