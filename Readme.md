@@ -24,23 +24,41 @@ This project includes:
 ## 📂 Project Structure
 
 app/
+
 ├── api/                # API routes (FastAPI routers)
+
 │   └── items.py        # CRUD endpoints for 'items'
+
 ├── db/                 # Database connection and session utilities
+
 │   └── connection.py
+
 ├── domain/             # Database models and domain entities
+
 │   └── models.py
+
 ├── templates/          # Jinja2 HTML templates (frontend UI)
+
 ├── tests/              # Pytest-based async test suite
+
 │   └── test_items.py
+
 ├── main.py              # FastAPI application entrypoint
+
 ├── scripts/            # Optional seeding/migration scripts
+
 data/
+
 └── seeds.json          # Example seed data
+
 docker-compose.yaml     # Dev stack
+
 docker-compose.prod.yml # Prod stack
+
 Dockerfile              # Multi-stage build
+
 Makefile                # CLI commands for dev/prod/test/deploy
+
 .pre-commit-config.yaml # Hooks for lint/format/security
 
 ## 🚀 Features
