@@ -1,207 +1,239 @@
-# 🚀 Python Async CRUD API
+# CRUD API — FastAPI + Postgres + Docker + Pre-commit
 
-A clean, layered **FastAPI** application with a **Connection Service** and **Persistence Layer** for default CRUD operations.
-Built with **SQLAlchemy Async** + **Pydantic v2** + **PostgreSQL** (SQLite-ready) and organized for scalability.
+A production-ready Python web service demonstrating clean architecture, PostgreSQL persistence, full CRUD operations, and modern development workflows.
 
----
+This project includes:
+    ⚡ FastAPI for a blazing-fast REST API with async support
+
+    🗄 PostgreSQL database with SQLAlchemy 2.x ORM
+
+    🔄 Full Create, Read, Update, Delete (CRUD) endpoints
+
+    📦 Docker for both development and production
+
+    🔥 Hot-reload dev mode, optimized multi-stage production build
+
+    🧪 pytest async testing with HTTPX & lifespan handling
+
+    🧹 pre-commit hooks for code hygiene, commit message rules, and secret scanning
+
+    🛡 Security checks for accidental secret commits
+
+    📜 Built-in example HTML UI to interact with the API
 
 ## 📂 Project Structure
 
-<!-- Write the project structure -->
 app/
-├─ api/ # HTTP routes
-│ └─ items.py
-├─ core/ # Config & settings
-│ └─ config.py
-├─ db/ # DB connection service
-│ └─ connection.py
-├─ domain/ # ORM models
-│ └─ models.py
-├─ persistence/ # Repository interface + implementation
-│ └─ repositories.py
-├─ schemas/ # Pydantic request/response models
-│ └─ item.py
-├─ services/ # Business logic
-│ └─ items.py
-└─ main.py # App bootstrap
+├── api/                # API routes (FastAPI routers)
+│   └── items.py        # CRUD endpoints for 'items'
+├── db/                 # Database connection and session utilities
+│   └── connection.py
+├── domain/             # Database models and domain entities
+│   └── models.py
+├── templates/          # Jinja2 HTML templates (frontend UI)
+├── tests/              # Pytest-based async test suite
+│   └── test_items.py
+├── main.py              # FastAPI application entrypoint
+├── scripts/            # Optional seeding/migration scripts
+data/
+└── seeds.json          # Example seed data
+docker-compose.yaml     # Dev stack
+docker-compose.prod.yml # Prod stack
+Dockerfile              # Multi-stage build
+Makefile                # CLI commands for dev/prod/test/deploy
+.pre-commit-config.yaml # Hooks for lint/format/security
 
+## 🚀 Features
 
----
+    Async database operations via SQLAlchemy + asyncpg
 
-## 🛠️ Tech Stack
+    Postgres persistence with automatic migrations (Alembic)
 
-- **FastAPI** – high-performance Python web framework
-- **SQLAlchemy Async** – async ORM
-- **PostgreSQL** (default) – relational database
-  *(can be swapped to SQLite for dev/testing)*
-- **Pydantic v2** – data validation & serialization
-- **Uvicorn** – ASGI server
+    JSON + HTML rendering (API + simple frontend)
 
----
+    Request logging with unique request IDs
 
-1️⃣ Project Goal
+    CORS support
 
-We set out to create a Python-based CRUD API with:
+    Payload size limiting middleware
 
-    A clean, layered architecture (Connection Service, Persistence Layer, Service Layer, API Layer)
+    Error handling for unexpected exceptions
 
-    Async-first design for performance
+    Health check endpoint (/health)
 
-    Ready to swap between PostgreSQL (default) and SQLite (quick local)
+    Seed data loaders (from JSON or generated)
 
-    A developer-friendly landing page with interactive features
+## 🛠 Requirements
 
-2️⃣ Core Architecture
+    Python 3.12+
 
-We used FastAPI for the HTTP layer, SQLAlchemy Async for ORM/database operations, and Pydantic v2 for input/output validation.
+    Docker & Docker Compose v2
 
-The layers are:
+    make (for Makefile tasks)
 
-    Connection Service
+    Node not required — frontend uses plain HTML + JS
 
-        Manages database engine & sessions
+## 📦 Setup
 
-        Provides health checks
+Clone the repo:
 
-        Controls startup/shutdown cleanup
+`git clone https://github.com/yourusername/crud-api.git`
+`cd crud-api`
 
-    Persistence Layer
+Create a virtual environment (for local dev):
 
-        Repository interface: defines the CRUD contract
+`python3 -m venv .venv`
 
-        Repository implementation: actual SQLAlchemy queries for items table
+`source .venv/bin/activate`
 
-    Service Layer
+`pip install -r requirements.txt`
 
-        Business logic
+## 🐳 Running the stack
 
-        Calls repositories and enforces rules
+We use a mode-aware Makefile so you can instantly switch between dev and prod workflows.
 
-    API Layer
+### Dev mode (hot reload, bind mounts)
+`make dev`
 
-        FastAPI routes that:
+    Mounts source code into container
 
-            Parse/validate requests
+    Auto-reloads on code changes
 
-            Call the service layer
+    Postgres runs in a container
 
-            Return clean JSON responses
+    API runs at http://localhost:8000
 
-3️⃣ Database
+### Prod mode (optimized build)
 
-    Default: PostgreSQL connection using asyncpg
+`make prod`
 
-    Alternative: SQLite with aiosqlite (no server required)
+    Multi-stage Docker build (smaller image)
 
-    Table: items with fields id, name, description, created_at, updated_at
+    No bind mounts
 
-    Auto-creates schema on startup for demo purposes (in production we’d use migrations like Alembic)
+    Suitable for deployment
 
-4️⃣ CRUD Endpoints
+### 🗂 API Endpoints
 
-    POST /items/ → create an item
+Method	Path	Description
 
-    GET /items/ → list items (with pagination + search)
+GET	/health	Health check
 
-    GET /items/{id} → fetch one
+GET	/items/	List items
 
-    PATCH /items/{id} → update one
+POST	/items/	Create new item
 
-    DELETE /items/{id} → remove one
+GET	/items/{id}	Get item by ID
 
-    GET /health → DB health check
+PATCH	/items/{id}	Update item
 
-5️⃣ Landing Page
+DELETE	/items/{id}	Delete item
 
-We built a custom HTML homepage for /:
+Example:
 
-    Health badge that checks /health
+`curl -X POST http://localhost:8000/items/ \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Test item", "description": "Hello world"}'`
 
-    Links to:
 
-        Swagger UI docs
+## 🌱 Seeding the database
 
-        ReDoc docs
+From host:
 
-        Items JSON list
+`make seedfile SEED_FILE=app/data/seeds.json`
 
-    Curl snippet (copy-to-clipboard) for creating an item
+From generated data:
 
-    Browser form to create an item (no curl required)
+`make seedcurl SEED_COUNT=10 SEED_PREFIX="Demo"`
 
-    A live table showing latest items:
+## 🧪 Running tests
 
-        Refresh button
+Tests are async and use FastAPI’s ASGI lifespan.
 
-        Auto-refresh after creation
+`make test`
+or
+`PYTHONPATH=. pytest -q`
 
-        Inline editing (name & description)
+## 🧹 Code quality & commit rules
 
-        Inline deleting with confirmation
+We use pre-commit hooks to ensure all code is clean before it’s committed:
 
-This page is fully static HTML/CSS/JS served by FastAPI using Jinja2 (though right now we keep it simple and don’t actually render dynamic server-side data).
-6️⃣ Dockerization
+    Ruff — linting + formatting
 
-We made the app container-friendly:
+    pyupgrade — auto-modernize Python syntax
 
-    Dockerfile: builds a Python image with FastAPI & deps, ready for production
+    mypy — optional type checks (on push)
 
-    docker-compose.yml: runs API + Postgres together in dev mode
+    Commitizen — enforce Conventional Commits
 
-        Hot reload (mounts your app/ directory)
+    detect-secrets / gitleaks — prevent secret leaks
 
-        Shared network so API talks to DB by service name (db)
+Install hooks:
 
-    Works equally well in dev (live reload) or prod (frozen image without reload)
+`pre-commit install --hook-type pre-commit --hook-type pre-push --hook-type commit-msg`
 
-7️⃣ Developer Experience
+Run all hooks manually:
 
-We’ve covered:
+`pre-commit run -a`
 
-    Clear .env config for DB URL & environment
+## Secret scanning
 
-    Code organized into logical modules
+    detect-secrets: baseline file .secrets.baseline tracks known false positives.
 
-    Health checks for readiness probes
+To scan manually:
 
-    Optional SQLite for quick start
+`make secret-scan`
 
-    Landing page for easy onboarding without needing Postman
+## 🖥 Frontend UI
 
-    Live UI for CRUD without leaving the browser
+Visit http://localhost:8000 in your browser to:
 
-    Curl commands for CLI fans
+    View health status
 
-    Hot reload in dev
+    Create items via form
 
-    Ready to add:
+    View item list
 
-        Alembic migrations
+    See live updates without reloading
 
-        Auth (API keys, JWT)
+## 🧭 Development flow
 
-        CORS for frontend integration
+Start stack:
 
-        Logging/metrics
+`make dev`
 
-8️⃣ What’s Working Right Now
+Code changes — Hot reload applies instantly.
 
-If you start the API (via Uvicorn locally or docker compose up), you get:
+Run tests:
 
-    Fully functional CRUD API
+`make test`
 
-    Swagger docs
+Stage changes:
 
-    A friendly landing page where you can:
+`git add .`
 
-        See health
+Commit with prompts:
 
-        Create items
+`cz commit`
 
-        View all items
+Push to repo:
 
-        Edit inline
+`git push`
 
-        Delete inline
+## 🛡 Production deployment
 
-    Changes instantly saved in the DB
+Ensure MODE=prod
+
+Build & run optimized image:
+
+`make prod`
+
+Set DATABASE_URL to production Postgres
+
+Place behind a reverse proxy (e.g., Nginx, Caddy) with HTTPS
+
+Configure allow_origins in main.py for your frontend domain
+
+## 📝 License
+
+MIT License — feel free to use and adapt.

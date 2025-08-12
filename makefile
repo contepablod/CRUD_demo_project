@@ -208,3 +208,17 @@ downgrade:
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 	| awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-12s\033[0m %s\n", $$1, $$2}'
+
+secret-scan:
+	@echo "🔍 Running detect-secrets..."
+	@if command -v detect-secrets >/dev/null 2>&1; then \
+		detect-secrets scan; \
+	else \
+		echo "⚠ detect-secrets not installed"; \
+	fi
+	@echo "🔍 Running gitleaks..."
+	@if command -v gitleaks >/dev/null 2>&1; then \
+		gitleaks detect --no-git -v; \
+	else \
+		echo "⚠ gitleaks not installed"; \
+	fi
