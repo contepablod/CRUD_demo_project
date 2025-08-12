@@ -70,8 +70,8 @@ def main():
 
     ok = 0
     for i in range(SEED_N):
-        name = f"{SEED_PREFIX} {i+1} · {rand_suffix()}"
-        desc = f"Seeded item #{i+1} from Makefile"
+        name = f"{SEED_PREFIX} {i + 1} · {rand_suffix()}"
+        desc = f"Seeded item #{i + 1} from Makefile"
         try:
             status, body = post_item(items_url, name, desc)
             if 200 <= status < 300:
