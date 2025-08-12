@@ -41,12 +41,12 @@ repos:
   # --- Local: run tests on push (keeps commit fast) ---
   - repo: local
     hooks:
-      - id: pytest
-        name: pytest (quick)
-        entry: bash -lc 'PYTHONPATH=. DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg:///./test.db} pytest -q'
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
+    - id: pytest
+      name: pytest (quick)
+      entry: bash -lc 'PYTHONPATH=. DATABASE_URL=${DATABASE_URL:-sqlite+aiosqlite:///./test.db} pytest -q'
+      language: system
+      pass_filenames: false
+      stages: [push]
 
   - repo: https://github.com/commitizen-tools/commitizen
     rev: v4.8.3
