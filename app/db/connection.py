@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
 
@@ -19,15 +21,19 @@ def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         url = settings.DATABASE_URL
-        kwargs = {
+        kwargs: dict[str, Any] = {  # <- annotate
             "pool_pre_ping": True,
             "future": True,
         }
-        # Only set pool args for Postgres; omit for SQLite
         if url.startswith("postgresql"):
             kwargs.update(pool_size=10, max_overflow=20)
         _engine = create_async_engine(url, **kwargs)
     return _engine
+
+
+async def init_models(Base: type[DeclarativeBase]) -> None:
+    async with get_engine().begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
 def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
@@ -57,11 +63,6 @@ async def healthcheck() -> bool:
         return True
     except Exception:
         return False
-
-
-async def init_models(Base) -> None:
-    async with get_engine().begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
 
 async def shutdown() -> None:

@@ -43,7 +43,7 @@ repos:
     hooks:
       - id: pytest
         name: pytest (quick)
-        entry: bash -lc 'PYTHONPATH=. DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://postgres:postgres@localhost:5432/crud_app_test} pytest -q'
+        entry: bash -lc 'PYTHONPATH=. DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg:///./test.db} pytest -q'
         language: system
         pass_filenames: false
         stages: [pre-push]
