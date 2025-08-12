@@ -30,3 +30,9 @@ ignore = ["E203"]  # if you later adopt Black-style slicing
 [tool.ruff.format]
 indent-style = "space"
 quote-style = "double"
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+tag_format = "v$version"
+update_changelog_on_bump = true

@@ -1,11 +1,19 @@
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator, Optional
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine, AsyncEngine
+
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+
 from app.core.config import settings
 
-_engine: Optional[AsyncEngine] = None
-_SessionLocal: Optional[async_sessionmaker[AsyncSession]] = None
+_engine: AsyncEngine | None = None
+_SessionLocal: async_sessionmaker[AsyncSession] | None = None
+
 
 def get_engine() -> AsyncEngine:
     global _engine
@@ -21,11 +29,15 @@ def get_engine() -> AsyncEngine:
         _engine = create_async_engine(url, **kwargs)
     return _engine
 
+
 def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
     global _SessionLocal
     if _SessionLocal is None:
-        _SessionLocal = async_sessionmaker(bind=get_engine(), expire_on_commit=False, class_=AsyncSession)
+        _SessionLocal = async_sessionmaker(
+            bind=get_engine(), expire_on_commit=False, class_=AsyncSession
+        )
     return _SessionLocal
+
 
 @asynccontextmanager
 async def session_scope() -> AsyncIterator[AsyncSession]:
@@ -37,6 +49,7 @@ async def session_scope() -> AsyncIterator[AsyncSession]:
             await session.rollback()
             raise
 
+
 async def healthcheck() -> bool:
     try:
         async with get_engine().connect() as conn:
@@ -45,9 +58,11 @@ async def healthcheck() -> bool:
     except Exception:
         return False
 
+
 async def init_models(Base) -> None:
     async with get_engine().begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
 
 async def shutdown() -> None:
     global _engine, _SessionLocal

@@ -22,6 +22,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install fastapi "uvicorn[standard]" "SQLAlchemy[asyncio]" asyncpg pydantic pydantic-settings python-dotenv aiosqlite
           pip install pytest pytest-asyncio httpx
+          pip install pre-commit && pre-commit run -a --show-diff-on-failure
       - name: Run tests
         env:
           DATABASE_URL: sqlite+aiosqlite:///./test.db

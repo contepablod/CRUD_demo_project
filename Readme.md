@@ -1,6 +1,6 @@
 # 🚀 Python Async CRUD API
 
-A clean, layered **FastAPI** application with a **Connection Service** and **Persistence Layer** for default CRUD operations.  
+A clean, layered **FastAPI** application with a **Connection Service** and **Persistence Layer** for default CRUD operations.
 Built with **SQLAlchemy Async** + **Pydantic v2** + **PostgreSQL** (SQLite-ready) and organized for scalability.
 
 ---
@@ -32,7 +32,7 @@ app/
 
 - **FastAPI** – high-performance Python web framework
 - **SQLAlchemy Async** – async ORM
-- **PostgreSQL** (default) – relational database  
+- **PostgreSQL** (default) – relational database
   *(can be swapped to SQLite for dev/testing)*
 - **Pydantic v2** – data validation & serialization
 - **Uvicorn** – ASGI server

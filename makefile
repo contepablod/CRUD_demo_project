@@ -95,7 +95,22 @@ healthprod:
 
 .PHONY: test testcov
 test:
-	PYTHONPATH=.  pytest -q --maxfail=1 
+	PYTHONPATH=.  pytest -q --maxfail=1
+
+.PHONY: hooks hooks-update hooks-run
+
+hooks:          ## install pre-commit hooks (commit + push)
+	pre-commit install --hook-type pre-commit --hook-type pre-push
+
+hooks-update:   ## update hook versions
+	pre-commit autoupdate
+
+hooks-run:      ## run hooks on all files
+	pre-commit run -a
+
+.PHONY: commit
+commit: ## Use commitizen to create commits
+	cz commit
 
 ## Run tests with coverage (requires pytest-cov if you want coverage)
 testcov:

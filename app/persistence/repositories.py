@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Sequence, Optional
-from sqlalchemy import select, update, delete
+from collections.abc import Sequence
+
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.domain.models import Item
 
 
@@ -10,7 +13,7 @@ class ItemRepository(ABC):
     @abstractmethod
     async def create(self, *, name: str, description: str) -> Item: ...
     @abstractmethod
-    async def get_by_id(self, item_id: str) -> Optional[Item]: ...
+    async def get_by_id(self, item_id: str) -> Item | None: ...
     @abstractmethod
     async def list(
         self, *, limit: int = 50, offset: int = 0, q: str | None = None
@@ -20,9 +23,9 @@ class ItemRepository(ABC):
         self,
         item_id: str,
         *,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-    ) -> Optional[Item]: ...
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Item | None: ...
     @abstractmethod
     async def delete(self, item_id: str) -> bool: ...
 
@@ -38,7 +41,7 @@ class SqlAlchemyItemRepository(ItemRepository):
         await self.session.refresh(item)
         return item
 
-    async def get_by_id(self, item_id: str) -> Optional[Item]:
+    async def get_by_id(self, item_id: str) -> Item | None:
         res = await self.session.execute(select(Item).where(Item.id == item_id))
         return res.scalar_one_or_none()
 
@@ -59,9 +62,9 @@ class SqlAlchemyItemRepository(ItemRepository):
         self,
         item_id: str,
         *,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-    ) -> Optional[Item]:
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Item | None:
         fields = {}
         if name is not None:
             fields["name"] = name

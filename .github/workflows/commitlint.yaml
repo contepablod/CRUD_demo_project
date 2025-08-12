@@ -1,0 +1,37 @@
+name: Commit message lint
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # we need history to check commits
+      - name: Set Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Commitizen
+        run: pip install commitizen==3.26.0
+      - name: Lint commit messages in PR range
+        if: github.event_name == 'pull_request'
+        run: |
+          # Compare base..HEAD to validate only PR commits
+          cz check --rev-range origin/${{ github.base_ref }}..HEAD
+      - name: Lint last commit on push
+        if: github.event_name == 'push'
+        run: |
+          # Validate all new commits on this push (fetch-depth:0 gives us history)
+          BASE_SHA="${{ github.event.before }}"
+          HEAD_SHA="${{ github.sha }}"
+          if [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            # force-push or first push to branch; validate all commits in branch
+            cz check --rev-range $(git rev-list --max-parents=0 HEAD)..HEAD
+          else
+            cz check --rev-range ${BASE_SHA}..${HEAD_SHA}
+          fi

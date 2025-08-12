@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import Annotated, Optional
-from app.schemas.item import ItemCreate, ItemUpdate, ItemOut
-from app.services.items import ItemService
-from app.persistence.repositories import SqlAlchemyItemRepository
-from app.db.connection import session_scope
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from app.db.connection import session_scope
+from app.persistence.repositories import SqlAlchemyItemRepository
+from app.schemas.item import ItemCreate, ItemOut, ItemUpdate
+from app.services.items import ItemService
 
 router = APIRouter(prefix="/items", tags=["items"])
 
@@ -20,16 +20,14 @@ async def get_service() -> ItemService:
 async def list_items(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    q: Optional[str] = Query(None),
+    q: str | None = Query(None),
     svc: Annotated[ItemService, Depends(get_service)] = None,
 ):
     return await svc.list(limit=limit, offset=offset, q=q)
 
 
 @router.get("/{item_id}", response_model=ItemOut)
-async def get_item(
-    item_id: str, svc: Annotated[ItemService, Depends(get_service)] = None
-):
+async def get_item(item_id: str, svc: Annotated[ItemService, Depends(get_service)] = None):
     item = await svc.get(item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
@@ -58,9 +56,7 @@ async def update_item(
 
 
 @router.delete("/{item_id}", status_code=204)
-async def delete_item(
-    item_id: str, svc: Annotated[ItemService, Depends(get_service)] = None
-):
+async def delete_item(item_id: str, svc: Annotated[ItemService, Depends(get_service)] = None):
     ok = await svc.delete(item_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Not found")
