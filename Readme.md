@@ -1,257 +1,325 @@
-# CRUD API — FastAPI + Postgres + Docker + Pre-commit
+# FastAPI Async CRUD – Postgres + SQLAlchemy + Docker
+
+A production‑ready, async CRUD API with a small HTML landing page. It uses **FastAPI**, **SQLAlchemy 2.x (async)**, **PostgreSQL**, **Alembic** for migrations, and ships with **Docker** (dev + prod), a **Makefile** for DX, **pytest** tests, and a hardened **pre-commit** suite (ruff, mypy, detect‑secrets, commitizen).
+
+> **Highlights**
+> - Async service layer & repository pattern
+> - HTML page at `/` with a tiny dashboard + live health badge
+> - Fully containerized (dev hot-reload, prod slim image)
+> - Seed data from JSON or random items
+> - CI-friendly, typed, linted, secret-scanned
+
+---
+
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Local Development](#local-development)
+- [Running with Docker](#running-with-docker)
+- [Makefile Commands](#makefile-commands)
+- [Environment Variables](#environment-variables)
+- [Database & Migrations](#database--migrations)
+- [Seeding Data](#seeding-data)
+- [API Endpoints](#api-endpoints)
+- [HTML Landing](#html-landing)
+- [Testing](#testing)
+- [Pre-commit & Commit Style](#pre-commit--commit-style)
+- [Secret Scanning](#secret-scanning)
+
+
+---
+
+## Architecture
+
+```
+.
+├── app
+│   ├── main.py                      # FastAPI app (lifespan: init models, shutdown); middleware; CORS; HTML route
+│   ├── api/
+│   │   └── items.py                 # /items CRUD endpoints (uses service via Depends)
+│   ├── services/
+│   │   └── items.py                 # Business logic (ItemService)
+│   ├── persistence/
+│   │   └── repositories.py          # SqlAlchemyItemRepository (async)
+│   ├── db/
+│   │   └── connection.py            # Async engine, session_scope, healthcheck, init_models
+│   ├── domain/
+│   │   └── models.py                # SQLAlchemy Declarative Base + Item model
+│   ├── schemas/
+│   │   └── item.py                  # Pydantic models (Create / Update / Out)
+│   ├── templates/
+│   │   └── index.html               # HTML landing w/ simple UI
+│   ├── scripts/
+│   │   └── seed.py                  # In-container seeder (random items)
+│   └── tests/
+│       ├── conf_test.py             # Test settings (LifespanManager etc.)
+│       └── test_items.py            # End-to-end CRUD test via httpx
+├── alembic.ini
+├── migrations/                      # Alembic env + versions/
+├── docker-compose.yaml              # Dev stack (hot reload, bind mount)
+├── docker-compose.prod.yml          # Prod stack (optimized image)
+├── dockerfile                       # Multi-stage (builder + slim runtime)
+├── makefile                         # DX helpers
+├── .pre-commit-config.yaml          # Lint/format/type/tests/secrets on commit/push
+├── .secrets.baseline                # detect-secrets baseline (tracked)
+├── .env.example                     # Template env vars (no secrets)
+├── pyproject.toml                   # Pin deps (ruff, mypy, etc.)
+├── mypy.ini / pytest.ini            # Tooling config
+└── README.md
+```
+
+---
+
+## Tech Stack
+
+- **FastAPI** (async ASGI) + **Uvicorn**
+- **SQLAlchemy 2.x async** + **asyncpg** (Postgres)
+- **Alembic** migrations
+- **Jinja2** templates for the landing page
+- **pytest**, **httpx**, **asgi-lifespan** for async tests
+- **ruff**, **ruff-format**, **mypy**, **pyupgrade**
+- **pre-commit**, **commitizen**, **detect-secrets**
+- **Docker** (multi-stage), **docker-compose**
+
+---
+
+## Local Development
+
+```bash
+# 1) Create a virtualenv and install deps
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# 2) Set environment (copy template)
+cp .env.example .env
+# edit DATABASE_URL if you want local Postgres, otherwise you can run via Docker
+
+# 3) Run API locally (needs DB up and DATABASE_URL configured)
+uvicorn app.main:app --reload --port 8000
+
+# Open http://localhost:8000/  (HTML) or http://localhost:8000/docs (Swagger)
+```
 
-A production-ready Python web service demonstrating clean architecture, PostgreSQL persistence, full CRUD operations, and modern development workflows.
+> If running Postgres locally, ensure the user/db exist and match your `DATABASE_URL`.
 
-This project includes:
-    ⚡ FastAPI for a blazing-fast REST API with async support
+---
 
-    🗄 PostgreSQL database with SQLAlchemy 2.x ORM
+## Running with Docker
 
-    🔄 Full Create, Read, Update, Delete (CRUD) endpoints
+### Dev (hot reload, bind mount)
+```bash
+make dev         # equivalent to MODE=dev make up (uses docker-compose.yaml)
+```
 
-    📦 Docker for both development and production
+### Prod (optimized image, no bind)
+```bash
+make prod        # equivalent to MODE=prod make up (uses docker-compose.prod.yml)
+```
 
-    🔥 Hot-reload dev mode, optimized multi-stage production build
+Common:
+```bash
+make up          # start stack (foreground)
+make down        # stop stack
+make logs        # tail API logs
+make build       # build images
+make prune       # stop & remove containers + volumes (⚠ destroys dev DB)
+```
 
-    🧪 pytest async testing with HTTPX & lifespan handling
+---
 
-    🧹 pre-commit hooks for code hygiene, commit message rules, and secret scanning
+## Makefile Commands
 
-    🛡 Security checks for accidental secret commits
+| Target            | What it does |
+|-------------------|--------------|
+| `make dev`        | Start dev stack (hot reload, bind mount) |
+| `make prod`       | Start prod stack (optimized multi-stage image) |
+| `make up`         | `docker compose up` with mode-aware files |
+| `make down`       | Stop containers |
+| `make logs`       | Tail API logs |
+| `make build`      | Build images |
+| `make rebuild`    | Build images without cache |
+| `make ps`         | List services |
+| `make sh`         | Shell into API container |
+| `make restart`    | Restart API container |
+| `make prune`      | Stop & remove containers + volumes |
+| `make health`     | Host health check (`GET /health`) |
+| `make shealth`    | In-container health check |
+| `make wait`       | Wait until API is healthy |
+| `make dbwait`     | Wait until Postgres is ready |
+| `make revision`   | Create Alembic migration (`M="message"`) |
+| `make migrate`    | Apply latest migrations |
+| `make downgrade`  | Roll back one migration |
+| `make seed`       | Seed N demo items **from inside** the API container |
+| `make seedcurl`   | Seed N items **from host** using curl |
+| `make seedfile`   | Seed items from JSON file (default `app/data/seeds.json`) |
+| `make test`       | Run test suite |
+| `make lint`/`fmt` | Ruff lint / format |
+| `make type`       | mypy type check |
+| `make secret-scan`| detect-secrets scan (and optional gitleaks) |
 
-    📜 Built-in example HTML UI to interact with the API
+> Many targets are **mode-aware** via `MODE=dev|prod` and use the right compose file(s).
 
-## 📂 Project Structure
+---
 
-app/
+## Environment Variables
 
-├── api/                # API routes (FastAPI routers)
+Configure via `.env` (example provided in `.env.example`).
 
-│   └── items.py        # CRUD endpoints for 'items'
+- `DATABASE_URL` — async SQLAlchemy URL.
 
-├── db/                 # Database connection and session utilities
+**Notes**
+- For **SQLite** (quick local runs/tests): `sqlite+aiosqlite:///./test.db`
+- In **Docker**, the compose files set this to the internal `db` host for you.
 
-│   └── connection.py
+---
 
-├── domain/             # Database models and domain entities
+## Database & Migrations
 
-│   └── models.py
+We use **Alembic** to manage schema changes.
 
-├── templates/          # Jinja2 HTML templates (frontend UI)
+```bash
+# Create a new migration (autogenerate)
+make revision M="add items table"
 
-├── tests/              # Pytest-based async test suite
+# Apply latest migrations
+make migrate
 
-│   └── test_items.py
+# Roll back one step
+make downgrade
+```
 
-├── main.py              # FastAPI application entrypoint
+> The app’s lifespan (in `main.py`) also runs `Base.metadata.create_all` on startup, which is handy for ephemeral/local/dev. In real prod, favor **explicit Alembic migrations**.
 
-├── scripts/            # Optional seeding/migration scripts
+---
 
-data/
+## Seeding Data
 
-└── seeds.json          # Example seed data
+There are three ways to seed demo data:
 
-docker-compose.yaml     # Dev stack
+1) **Inside the container** (script reads env vars):
+```bash
+make seed
+# variables you can override:
+#   SEED_N=20 SEED_PREFIX=Foo SEED_URL=http://localhost:8000/items/
+```
 
-docker-compose.prod.yml # Prod stack
+2) **From the host using curl** (random N items):
+```bash
+make seedcurl SEED_COUNT=10 SEED_PREFIX="Demo" SEED_BASE="http://localhost:8000/"
+```
 
-Dockerfile              # Multi-stage build
+3) **From a JSON file** (array of `{name, description}`):
+```bash
+# default path: app/data/seeds.json
+make seedfile SEED_FILE=app/data/seeds.json SEED_BASE="http://localhost:8000/"
+```
 
-Makefile                # CLI commands for dev/prod/test/deploy
+> `make seedcurl` / `seedfile` can be run against **any** reachable base URL via `SEED_BASE`.
 
-.pre-commit-config.yaml # Hooks for lint/format/security
+---
 
-## 🚀 Features
+## API Endpoints
 
-    Async database operations via SQLAlchemy + asyncpg
+- `GET /health` → `{"ok": true}` if DB is reachable
+- `GET /items/` → list items (query: `limit`, `offset`, `q`)
+- `GET /items/{id}` → get single item
+- `POST /items/` → create item
+- `PATCH /items/{id}` → partial update
+- `DELETE /items/{id}` → delete
 
-    Postgres persistence with automatic migrations (Alembic)
+### cURL Examples
 
-    JSON + HTML rendering (API + simple frontend)
-
-    Request logging with unique request IDs
-
-    CORS support
-
-    Payload size limiting middleware
-
-    Error handling for unexpected exceptions
-
-    Health check endpoint (/health)
-
-    Seed data loaders (from JSON or generated)
-
-## 🛠 Requirements
-
-    Python 3.12+
-
-    Docker & Docker Compose v2
-
-    make (for Makefile tasks)
-
-    Node not required — frontend uses plain HTML + JS
-
-## 📦 Setup
-
-Clone the repo:
-
-`git clone https://github.com/yourusername/crud-api.git`
-`cd crud-api`
-
-Create a virtual environment (for local dev):
-
-`python3 -m venv .venv`
-
-`source .venv/bin/activate`
-
-`pip install -r requirements.txt`
-
-## 🐳 Running the stack
-
-We use a mode-aware Makefile so you can instantly switch between dev and prod workflows.
-
-### Dev mode (hot reload, bind mounts)
-`make dev`
-
-    Mounts source code into container
-
-    Auto-reloads on code changes
-
-    Postgres runs in a container
-
-    API runs at http://localhost:8000
-
-### Prod mode (optimized build)
-
-`make prod`
-
-    Multi-stage Docker build (smaller image)
-
-    No bind mounts
-
-    Suitable for deployment
-
-### 🗂 API Endpoints
-
-Method	Path	Description
-
-GET	/health	Health check
-
-GET	/items/	List items
-
-POST	/items/	Create new item
-
-GET	/items/{id}	Get item by ID
-
-PATCH	/items/{id}	Update item
-
-DELETE	/items/{id}	Delete item
-
-Example:
-
-`curl -X POST http://localhost:8000/items/ \
+```bash
+# Create (note trailing slash)
+curl -X POST http://127.0.0.1:8000/items/ \
   -H "Content-Type: application/json" \
-  -d '{"name": "Test item", "description": "Hello world"}'`
+  -d '{"name":"Test item","description":"Hello from Ubuntu"}'
 
+# List
+curl http://127.0.0.1:8000/items/?limit=10
 
-## 🌱 Seeding the database
+# Get
+curl http://127.0.0.1:8000/items/<id>
 
-From host:
+# Update
+curl -X PATCH http://127.0.0.1:8000/items/<id> \
+  -H "Content-Type: application/json" \
+  -d '{"description":"updated"}'
 
-`make seedfile SEED_FILE=app/data/seeds.json`
+# Delete
+curl -X DELETE http://127.0.0.1:8000/items/<id> -i
+```
 
-From generated data:
+> `POST /items` (without slash) returns `307` redirect to `/items/`. Either follow redirects or always include the trailing `/` when creating.
 
-`make seedcurl SEED_COUNT=10 SEED_PREFIX="Demo"`
+---
 
-## 🧪 Running tests
+## HTML Landing
 
-Tests are async and use FastAPI’s ASGI lifespan.
+- `GET /` serves `app/templates/index.html` (Jinja2).
+- It shows:
+  - Service title + health badge (queries `/health`)
+  - Quick cURL copy button
+  - Create form (POSTs to `/items/`)
+  - A small table with the latest items (`GET /items/?limit=50`)
 
-`make test`
-or
-`PYTHONPATH=. pytest -q`
+You can edit the page and the embedded JS to improve styling/UX.
 
-## 🧹 Code quality & commit rules
+> In VS Code, hit **Ctrl+Shift+V** (or `Cmd+Shift+V`) to preview `README.md`.
 
-We use pre-commit hooks to ensure all code is clean before it’s committed:
+---
 
-    Ruff — linting + formatting
+## Testing
 
-    pyupgrade — auto-modernize Python syntax
+We use **pytest** + **httpx** + **asgi-lifespan** to run the app in‑process with lifespan events.
 
-    mypy — optional type checks (on push)
+```bash
+# In a venv:
+make test
+# or directly:
+PYTHONPATH=. pytest -q --maxfail=1
+```
 
-    Commitizen — enforce Conventional Commits
+**Notes**
+- Tests can run on **SQLite** by setting `DATABASE_URL=sqlite+aiosqlite:///./test.db`.
+- For Postgres tests, ensure a running DB and a valid `DATABASE_URL` (and create the test DB).
 
-    detect-secrets / gitleaks — prevent secret leaks
+---
 
-Install hooks:
+## Pre-commit & Commit Style
 
-`pre-commit install --hook-type pre-commit --hook-type pre-push --hook-type commit-msg`
+Install hooks (once):
+```bash
+pre-commit install --hook-type pre-commit --hook-type pre-push --hook-type commit-msg
+```
 
-Run all hooks manually:
+What runs:
+- **pre-commit**: trailing whitespace, end-of-file-fixer, check-yaml/toml, pyupgrade, ruff (lint + format), detect-secrets
+- **pre-push**: `mypy` + quick `pytest` (configurable)
+- **commit-msg**: **commitizen** (conventional commits)
 
-`pre-commit run -a`
+Example commit:
+```
+feat(api): add search filter to list items
+```
 
-## Secret scanning
+---
 
-    detect-secrets: baseline file .secrets.baseline tracks known false positives.
+## Secret Scanning
 
-To scan manually:
+We track a **detect-secrets** baseline and ship a convenience target:
 
-`make secret-scan`
+```bash
+make secret-scan
+```
 
-## 🖥 Frontend UI
+- If `gitleaks` is installed, it’s also invoked as an extra layer.
+- Never commit real secrets. Use `.env.example` placeholders like `CHANGE_ME` and keep `.env` out of Git.
 
-Visit http://localhost:8000 in your browser to:
+---
 
-    View health status
+## License
 
-    Create items via form
-
-    View item list
-
-    See live updates without reloading
-
-## 🧭 Development flow
-
-Start stack:
-
-`make dev`
-
-Code changes — Hot reload applies instantly.
-
-Run tests:
-
-`make test`
-
-Stage changes:
-
-`git add .`
-
-Commit with prompts:
-
-`cz commit`
-
-Push to repo:
-
-`git push`
-
-## 🛡 Production deployment
-
-Ensure MODE=prod
-
-Build & run optimized image:
-
-`make prod`
-
-Set DATABASE_URL to production Postgres
-
-Place behind a reverse proxy (e.g., Nginx, Caddy) with HTTPS
-
-Configure allow_origins in main.py for your frontend domain
-
-## 📝 License
-
-MIT License — feel free to use and adapt.
+MIT (or your preferred license)
